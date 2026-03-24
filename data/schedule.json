@@ -1,12 +1,12 @@
 {
   "reminders": [
     {
-      "id": "reminder-1230",
-      "label": "12:30 Reminder",
+      "id": "reminder-1240",
+      "label": "12:40 Reminder",
       "description": "Follow-up for pending staff",
       "type": "followup",
-      "cron": "30 12 * * 1-6",
-      "time": "12:30",
+      "cron": "40 12 * * 1-6",
+      "time": "12:40",
       "days": ["mon","tue","wed","thu","fri","sat"],
       "enabled": true,
       "emoji": "⏰"
