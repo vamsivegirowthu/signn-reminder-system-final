@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGNN Ops Hub</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f8f9fb;
+  --white:#ffffff;
+  --border:#e5e7eb;
+  --border-light:#f1f3f5;
+  --text:#111827;
+  --text2:#374151;
+  --muted:#6b7280;
+  --muted2:#9ca3af;
+  --accent:#2563eb;
+  --accent-light:#eff6ff;
+  --green:#16a34a;
+  --green-light:#f0fdf4;
+  --red:#dc2626;
+  --red-light:#fef2f2;
+  --yellow:#d97706;
+  --yellow-light:#fffbeb;
+  --orange:#ea580c;
+  --font:'DM Sans',sans-serif;
+  --mono:'DM Mono',monospace;
+  --sidebar:240px;
+  --header:56px;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 6px rgba(0,0,0,.05),0 2px 4px rgba(0,0,0,.04);
+}
+
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;grid-template-rows:var(--header) 1fr;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+aside{grid-row:1/3;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.brand{height:var(--header);display:flex;align-items:center;gap:.6rem;padding:0 1.1rem;border-bottom:1px solid var(--border);font-weight:700;font-size:.95rem;flex-shrink:0}
+.brand-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem;flex-shrink:0}
+.brand-name{color:var(--text)}
+nav{padding:.75rem .6rem;flex:1}
+.nav-section{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);padding:.5rem .5rem .3rem;margin-top:.25rem}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.52rem .75rem;border-radius:7px;cursor:pointer;font-size:.85rem;color:var(--muted);transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--font);font-weight:500;position:relative}
+.nav-item:hover{background:var(--bg);color:var(--text2)}
+.nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:600}
+.nav-icon{width:16px;text-align:center;flex-shrink:0;opacity:.7}
+.nav-item.active .nav-icon{opacity:1}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:99px;min-width:18px;text-align:center}
+
+/* ── HEADER ── */
+header{background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;z-index:100}
+.page-title{font-size:.9rem;font-weight:600;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:.75rem}
+.wa-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .75rem;border-radius:99px;font-size:.75rem;font-weight:600;border:1px solid;cursor:pointer;transition:all .2s}
+.wa-chip.connected{background:var(--green-light);border-color:#bbf7d0;color:var(--green)}
+.wa-chip.disconnected{background:var(--red-light);border-color:#fecaca;color:var(--red)}
+.wa-chip.connecting{background:var(--yellow-light);border-color:#fde68a;color:var(--yellow)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.dot.pulse{animation:pulse 1.5s infinite}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.8rem;cursor:pointer}
+
+/* ── CONTENT ── */
+main{overflow-y:auto;padding:1.75rem 1.75rem;background:var(--bg)}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:1.5rem}
+.page-heading{font-size:1.6rem;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.page-sub{color:var(--muted);font-size:.85rem;margin-top:.2rem}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-header{padding:.9rem 1.25rem;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.card-title{font-weight:600;font-size:.9rem;color:var(--text)}
+.card-sub{font-size:.75rem;color:var(--muted);margin-top:.15rem}
+.card-body{padding:1.25rem}
+
+/* ── STAT CARDS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.1rem 1.25rem}
+.stat-label{font-size:.75rem;color:var(--muted);font-weight:500;margin-bottom:.5rem}
+.stat-val{font-size:1.75rem;font-weight:700;color:var(--text);letter-spacing:-.03em;line-height:1}
+.stat-sub{font-size:.72rem;color:var(--muted);margin-top:.3rem;display:flex;align-items:center;gap:.25rem}
+.stat-up{color:var(--green)}.stat-down{color:var(--red)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:7px;border:1px solid var(--border);font-family:var(--font);font-size:.82rem;font-weight:500;cursor:pointer;transition:all .12s;background:var(--white);color:var(--text2);white-space:nowrap}
+.btn:hover{border-color:#d1d5db;background:#f9fafb}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#15803d;border-color:#15803d}
+.btn-danger{background:var(--red-light);border-color:#fca5a5;color:var(--red)}
+.btn-danger:hover{background:#fee2e2}
+.btn-sm{padding:.35rem .65rem;font-size:.75rem}
+.btn-icon{padding:.4rem .5rem}
+.btn-ghost{border-color:transparent;background:transparent}
+.btn-ghost:hover{background:var(--bg)}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.7rem 1.1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;background:#fafbfc}
+td{padding:.8rem 1.1rem;border-bottom:1px solid var(--border-light);color:var(--text2);font-size:.85rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafbfc}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .6rem;border-radius:99px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.badge-blue{background:var(--accent-light);color:var(--accent)}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-yellow{background:var(--yellow-light);color:var(--yellow)}
+.badge-gray{background:#f3f4f6;color:var(--muted)}
+.badge-orange{background:#fff7ed;color:var(--orange)}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:.78rem;font-weight:500;color:var(--text2);margin-bottom:.35rem}
+.form-input{width:100%;background:var(--white);border:1px solid var(--border);border-radius:7px;padding:.52rem .75rem;color:var(--text);font-family:var(--font);font-size:.85rem;transition:border-color .12s;outline:none}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+select.form-input{cursor:pointer}
+
+/* ── PROGRESS ── */
+.progress{height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;transition:width .5s ease}
+.pf-blue{background:var(--accent)}
+.pf-green{background:var(--green)}
+.pf-yellow{background:var(--yellow)}
+.pf-red{background:var(--red)}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(2px)}
+.modal-bg.show{display:flex}
+.modal{background:var(--white);border:1px solid var(--border);border-radius:14px;width:90%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.12);animation:scaleIn .18s ease}
+.modal-header{padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-weight:600;font-size:.95rem}
+.modal-body{padding:1.4rem}
+.modal-footer{padding:1rem 1.4rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem}
+
+/* ── TOGGLE ── */
+.toggle{position:relative;width:36px;height:20px;cursor:pointer;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#d1d5db;border-radius:99px;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
+
+/* ── DAYS PICKER ── */
+.days-picker{display:flex;gap:.35rem;flex-wrap:wrap}
+.day-btn{padding:.3rem .55rem;border-radius:6px;border:1px solid var(--border);background:var(--white);color:var(--muted);font-size:.72rem;font-weight:600;cursor:pointer;transition:all .12s;font-family:var(--font)}
+.day-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+
+/* ── STEP FLOW ── */
+.flow-steps{display:flex;align-items:center;gap:0;margin:.5rem 0}
+.flow-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+.flow-step:not(:last-child)::after{content:'';position:absolute;top:16px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;background:var(--border)}
+.flow-step.done::after{background:var(--green)}
+.flow-step.active::after{background:linear-gradient(90deg,var(--green),var(--border))}
+.step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:.75rem;z-index:1;transition:all .3s;color:var(--muted)}
+.flow-step.done .step-circle{border-color:var(--green);background:var(--green-light);color:var(--green)}
+.flow-step.active .step-circle{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.step-label{font-size:.7rem;color:var(--muted);margin-top:.4rem;text-align:center;line-height:1.3}
+.flow-step.done .step-label{color:var(--green)}.flow-step.active .step-label{color:var(--accent)}
+
+/* ── TOAST ── */
+.toasts{position:fixed;bottom:1.25rem;right:1.25rem;z-index:999;display:flex;flex-direction:column;gap:.4rem}
+.toast{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.7rem 1rem;font-size:.82rem;max-width:300px;animation:slideIn .2s ease;box-shadow:var(--shadow-md);color:var(--text2)}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--accent)}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:3.5rem 1rem}
+.empty-icon{font-size:2.5rem;margin-bottom:.75rem;opacity:.4}
+.empty-title{font-weight:600;font-size:1rem;color:var(--text);margin-bottom:.35rem}
+.empty-sub{color:var(--muted);font-size:.82rem}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border-light);margin:1rem 0}
+
+/* ── QR ── */
+#qr-img{width:240px;height:240px;border-radius:10px;border:1px solid var(--border);display:none;margin:0 auto;display:block}
+
+/* ── PENDING SCAN ROW ── */
+.person-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:var(--accent);flex-shrink:0}
+
+/* ── CHART CONTAINER ── */
+.chart-wrap{position:relative;height:200px}
+
+/* ── CLINIC RULE ROW ── */
+.rule-row{display:grid;grid-template-columns:1fr 90px 90px 90px 80px 40px;align-items:center;gap:.5rem;padding:.75rem 1.1rem;border-bottom:1px solid var(--border-light)}
+.rule-row:last-child{border-bottom:none}
+.rule-row:hover{background:#fafbfc}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── SIDEBAR ── -->
+<aside>
+  <div class="brand">
+    <div class="brand-icon">⚙️</div>
+    <span class="brand-name">SIGNN Ops Hub</span>
+  </div>
+  <nav>
+    <div class="nav-section">Overview</div>
+    <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▣</span> Dashboard</button>
+
+    <div class="nav-section" style="margin-top:.5rem">Management</div>
+    <button class="nav-item" data-page="clinics"><span class="nav-icon">⊞</span> Clinics</button>
+    <button class="nav-item" data-page="staff"><span class="nav-icon">◎</span> Staff</button>
+    <button class="nav-item" data-page="shifts"><span class="nav-icon">◷</span> Shifts</button>
+    <button class="nav-item" data-page="rules"><span class="nav-icon">◈</span> Reminder Rules</button>
+
+    <div class="nav-section" style="margin-top:.5rem">Operations</div>
+    <button class="nav-item" data-page="daily"><span class="nav-icon">⊙</span> Daily Scans</button>
+    <button class="nav-item" data-page="pending"><span class="nav-icon">△</span> Pending Scans <span class="nav-badge" id="pending-badge">0</span></button>
+    <button class="nav-item" data-page="messages"><span class="nav-icon">◻</span> Message Logs</button>
+    <button class="nav-item" data-page="sessions"><span class="nav-icon">◉</span> WA Sessions</button>
+
+    <div class="nav-section" style="margin-top:.5rem">Analytics</div>
+    <button class="nav-item" data-page="reports"><span class="nav-icon">▦</span> Reports</button>
+
+    <div class="nav-section" style="margin-top:.5rem">System</div>
+    <button class="nav-item" data-page="reminders"><span class="nav-icon">◌</span> Reminder Schedule</button>
+    <button class="nav-item" data-page="triggers"><span class="nav-icon">⚡</span> Manual Triggers</button>
+    <button class="nav-item" data-page="activity"><span class="nav-icon">≡</span> Activity Log</button>
+  </nav>
+</aside>
+
+<!-- ── HEADER ── -->
+<header>
+  <span class="page-title" id="header-title">Dashboard</span>
+  <div class="header-right">
+    <div class="wa-chip connecting" id="wa-status" onclick="showQR()">
+      <div class="dot pulse"></div>
+      <span id="wa-status-text">Connecting...</span>
+    </div>
+    <div class="avatar">S</div>
+  </div>
+</header>
+
+<!-- ── MAIN CONTENT ── -->
+<main>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="page-hdr-row page-header">
+    <div>
+      <div class="page-heading">Dashboard</div>
+      <div class="page-sub" id="dash-sub">Here's a snapshot of SIGNN operations for today.</div>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn" onclick="fetchAll()">↻ Refresh Data</button>
+      <button class="btn btn-primary" onclick="exportSummary()">↓ Export Summary</button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total Clinics</div><div class="stat-val" id="st-clinics">0</div><div class="stat-sub">across all locations</div></div>
+    <div class="stat-card"><div class="stat-label">Active Clinics</div><div class="stat-val" id="st-active">0</div><div class="stat-sub" id="st-active-pct">0% of total</div></div>
+    <div class="stat-card"><div class="stat-label">Total Staff</div><div class="stat-val" id="st-total">0</div><div class="stat-sub">registered members</div></div>
+    <div class="stat-card"><div class="stat-label">Today Scan Compliance</div><div class="stat-val" id="st-compliance">—</div><div class="stat-sub" id="st-compliance-delta">overall rate</div></div>
+    <div class="stat-card"><div class="stat-label">Pending Scans Today</div><div class="stat-val" id="st-pending">0</div><div class="stat-sub" id="st-pending-clinics">across clinics</div></div>
+    <div class="stat-card"><div class="stat-label">Missed Scans Today</div><div class="stat-val" id="st-missed">0</div><div class="stat-sub">supervisor alerted</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:1rem;margin-bottom:1rem">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Daily Scan Compliance</div><div class="card-sub">Overall compliance rate for the last 7 days.</div></div>
+      </div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="chart-compliance"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Clinic-wise Readiness</div><div class="card-sub">Today's scan status for active clinics.</div></div>
+      <div class="card-body" id="clinic-readiness"><div class="empty" style="padding:1.5rem"><div class="empty-icon">🏥</div><div class="empty-sub">No clinics yet</div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">📅 Today's Reminder Flow</div></div>
+    <div class="card-body">
+      <div class="flow-steps" id="flow-steps">
+        <div class="flow-step active" id="fs-0"><div class="step-circle">🌅</div><div class="step-label">Morning<br>Reminder</div></div>
+        <div class="flow-step" id="fs-1"><div class="step-circle">⏰</div><div class="step-label">1-Hour<br>Follow-up</div></div>
+        <div class="flow-step" id="fs-2"><div class="step-circle">🚨</div><div class="step-label">Supervisor<br>Alert</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLINICS -->
+<div class="page" id="page-clinics">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Clinics</div><div class="page-sub">Manage clinic locations and supervisors.</div></div>
+    <button class="btn btn-primary" onclick="openClinicModal()">+ Add Clinic</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Clinic Name</th><th>Location</th><th>Supervisor</th><th>WhatsApp</th><th>Staff</th><th>Status</th><th></th></tr></thead>
+        <tbody id="clinics-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF -->
+<div class="page" id="page-staff">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Staff</div><div class="page-sub">Manage staff members across all clinics.</div></div>
+    <button class="btn btn-primary" onclick="openMemberModal()">+ Add Staff</button>
+  </div>
+  <div class="card">
+    <div class="card-header" style="gap:.75rem">
+      <span class="card-title">All Members</span>
+      <select class="form-input" id="filter-clinic" onchange="renderStaffTable()" style="width:200px;padding:.3rem .6rem;font-size:.8rem">
+        <option value="">All Clinics</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Role</th><th>Clinic</th><th>WhatsApp</th><th>Today's Scan</th><th></th></tr></thead>
+        <tbody id="staff-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SHIFTS -->
+<div class="page" id="page-shifts">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Shifts</div><div class="page-sub">Define shift timings for scan compliance tracking.</div></div>
+    <button class="btn btn-primary" onclick="toast('Shift management coming soon','info')">+ Add Shift</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Shift Name</th><th>Start Time</th><th>End Time</th><th>Clinics</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td colspan="6"><div class="empty"><div class="empty-icon">◷</div><div class="empty-title">No shifts defined</div><div class="empty-sub">Add shift timings to enable time-based compliance tracking</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- REMINDER RULES -->
+<div class="page" id="page-rules">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Reminder Rules</div><div class="page-sub">Configure automated reminder rules for each clinic.</div></div>
+    <div style="display:flex;gap:.5rem">
+      <input class="form-input" placeholder="Search rules..." style="width:200px;padding:.35rem .7rem" oninput="filterRules(this.value)">
+      <button class="btn btn-primary" onclick="openRuleModal()">⊕ Add Rule</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="rule-row" style="background:#fafbfc;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--border)">
+      <div>Clinic</div><div>1st Reminder</div><div>2nd Reminder</div><div>Final Missed</div><div>Status</div><div></div>
+    </div>
+    <div id="rules-list"></div>
+  </div>
+</div>
+
+<!-- DAILY SCANS -->
+<div class="page" id="page-daily">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Daily Scans</div><div class="page-sub">Today's readiness scan completion status.</div></div>
+    <button class="btn" onclick="fetchSummary()">↻ Refresh</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Staff Member</th><th>Clinic</th><th>Role</th><th>Scanned At</th><th>Status</th><th>Reminders Sent</th></tr></thead>
+        <tbody id="daily-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PENDING SCANS -->
+<div class="page" id="page-pending">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Pending Scans</div><div class="page-sub">Monitor staff who have not yet completed their daily readiness scan.</div></div>
+    <button class="btn btn-primary" onclick="trigger('followup')">✈ Send All Reminders</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Staff Member</th><th>Clinic</th><th>WhatsApp</th><th>Overdue</th><th>Reminder Stage</th><th></th></tr></thead>
+        <tbody id="pending-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE LOGS -->
+<div class="page" id="page-messages">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Message Logs</div><div class="page-sub">Review all automated WhatsApp messages sent to staff.</div></div>
+    <div style="display:flex;gap:.5rem">
+      <select class="form-input" style="width:160px;padding:.35rem .6rem;font-size:.8rem" id="msg-filter">
+        <option value="">All Types</option>
+        <option value="morning">Morning</option>
+        <option value="followup">Follow-up</option>
+        <option value="supervisor">Supervisor Alert</option>
+      </select>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Recipient</th><th>Clinic</th><th>Type</th><th>Time</th><th>Status</th></tr></thead>
+        <tbody id="messages-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- WA SESSIONS -->
+<div class="page" id="page-sessions">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">WhatsApp Sessions</div><div class="page-sub">Manage and monitor WhatsApp integration sessions.</div></div>
+    <button class="btn btn-primary" onclick="showQR()">⏻ New Session</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem" id="sessions-grid">
+    <!-- filled dynamically -->
+  </div>
+</div>
+
+<!-- REPORTS -->
+<div class="page" id="page-reports">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Compliance Reports</div><div class="page-sub">Generate and export compliance reports by clinic and date range.</div></div>
+    <button class="btn btn-primary" onclick="exportReport()">↓ Export Report</button>
+  </div>
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-header"><div class="card-title">Filters</div></div>
+    <div class="card-body" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin:0;flex:1;min-width:180px">
+        <label class="form-label">Date Range</label>
+        <input class="form-input" type="date" id="rep-from" style="padding:.4rem .7rem">
+      </div>
+      <div class="form-group" style="margin:0;flex:1;min-width:180px">
+        <label class="form-label">To</label>
+        <input class="form-input" type="date" id="rep-to" style="padding:.4rem .7rem">
+      </div>
+      <div class="form-group" style="margin:0;flex:1;min-width:180px">
+        <label class="form-label">Clinic</label>
+        <select class="form-input" id="rep-clinic" style="padding:.4rem .7rem"><option value="">All Clinics</option></select>
+      </div>
+      <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Clinic</th><th>Compliance</th><th>Missed Scans</th><th>Reminders Sent</th></tr></thead>
+        <tbody id="report-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- REMINDER SCHEDULE -->
+<div class="page" id="page-reminders">
+  <div class="page-hdr-row page-header">
+    <div><div class="page-heading">Reminder Schedule</div><div class="page-sub">Configure automated WhatsApp reminder schedule.</div></div>
+    <button class="btn btn-primary" onclick="openReminderModal()">+ Add Reminder</button>
+  </div>
+  <div id="reminders-list"></div>
+</div>
+
+<!-- MANUAL TRIGGERS -->
+<div class="page" id="page-triggers">
+  <div class="page-header"><div class="page-heading">Manual Triggers</div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1rem">
+    <div class="card"><div class="card-body" style="text-align:center;padding:2rem">
+      <div style="font-size:2.2rem;margin-bottom:.75rem">🌅</div>
+      <div style="font-weight:600;font-size:.95rem;margin-bottom:.35rem">Morning Reminder</div>
+      <div style="color:var(--muted);font-size:.8rem;margin-bottom:1.25rem;line-height:1.5">Send Signn readiness scan reminder to all staff in all clinics</div>
+      <button class="btn btn-success" style="width:100%" onclick="trigger('morning')">Send Now</button>
+    </div></div>
+    <div class="card"><div class="card-body" style="text-align:center;padding:2rem">
+      <div style="font-size:2.2rem;margin-bottom:.75rem">⏰</div>
+      <div style="font-weight:600;font-size:.95rem;margin-bottom:.35rem">1-Hour Follow-up</div>
+      <div style="color:var(--muted);font-size:.8rem;margin-bottom:1.25rem;line-height:1.5">Remind only staff who have not yet completed their scan</div>
+      <button class="btn btn-primary" style="width:100%" onclick="trigger('followup')">Send Now</button>
+    </div></div>
+    <div class="card"><div class="card-body" style="text-align:center;padding:2rem">
+      <div style="font-size:2.2rem;margin-bottom:.75rem">🚨</div>
+      <div style="font-weight:600;font-size:.95rem;margin-bottom:.35rem">Supervisor Alert</div>
+      <div style="color:var(--muted);font-size:.8rem;margin-bottom:1.25rem;line-height:1.5">Alert each clinic supervisor with list of non-compliant staff</div>
+      <button class="btn btn-danger" style="width:100%;background:var(--red);border-color:var(--red);color:#fff" onclick="trigger('supervisor')">Send Now</button>
+    </div></div>
+  </div>
+  <div class="card">
+    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div style="font-weight:600;font-size:.9rem">⚠️ Reset Today's Scan Data</div>
+        <div style="color:var(--muted);font-size:.8rem;margin-top:.2rem">Clears all scan records for today and re-initializes all staff</div>
+      </div>
+      <button class="btn btn-danger" onclick="resetToday()">↺ Reset Today</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY LOG -->
+<div class="page" id="page-activity">
+  <div class="page-hdr-row page-header">
+    <div class="page-heading">Activity Log</div>
+    <button class="btn" onclick="loadActivityLog()">↻ Refresh</button>
+  </div>
+  <div class="card"><div class="card-body" style="padding:.5rem">
+    <div id="full-log" style="max-height:600px;overflow-y:auto"></div>
+  </div></div>
+</div>
+
+</main>
+</div><!-- /app -->
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- CLINIC -->
+<div class="modal-bg" id="clinic-modal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="clinic-modal-title">Add Clinic</span><button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('clinic-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="c-edit-id">
+      <div class="form-group"><label class="form-label">Clinic Name *</label><input class="form-input" id="c-name" placeholder="e.g. Sunrise Health Clinic"></div>
+      <div class="form-group"><label class="form-label">Location *</label><input class="form-input" id="c-location" placeholder="e.g. Banjara Hills, Hyderabad"></div>
+      <div style="font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.75rem;margin-top:.25rem;text-transform:uppercase;letter-spacing:.06em">Supervisor Details</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Supervisor Name *</label><input class="form-input" id="c-sup-name" placeholder="Dr. Full Name"></div>
+        <div class="form-group"><label class="form-label">WhatsApp Number *</label><input class="form-input" id="c-sup-wa" placeholder="919876543210" type="tel"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('clinic-modal')">Cancel</button><button class="btn btn-primary" onclick="saveClinic()">Save Clinic</button></div>
+  </div>
+</div>
+
+<!-- MEMBER -->
+<div class="modal-bg" id="member-modal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="member-modal-title">Add Staff Member</span><button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('member-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="m-edit-id">
+      <input type="hidden" id="m-clinic-id2">
+      <div class="form-group"><label class="form-label">Clinic *</label><select class="form-input" id="m-clinic"><option value="">Select clinic...</option></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="m-name" placeholder="Staff member name"></div>
+        <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="m-role" placeholder="e.g. Nurse, Receptionist"></div>
+      </div>
+      <div class="form-group"><label class="form-label">WhatsApp Number *</label><input class="form-input" id="m-wa" placeholder="919876543210" type="tel"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('member-modal')">Cancel</button><button class="btn btn-primary" onclick="saveMember()">Save Member</button></div>
+  </div>
+</div>
+
+<!-- REMINDER RULE -->
+<div class="modal-bg" id="rule-modal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="rule-modal-title">Add Reminder Rule</span><button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('rule-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="rule-clinic-id">
+      <div class="form-group"><label class="form-label">Clinic</label><select class="form-input" id="rule-clinic-sel"><option value="">All Clinics</option></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">1st Reminder (min after shift)</label><input class="form-input" id="rule-1st" type="number" placeholder="30" value="30"></div>
+        <div class="form-group"><label class="form-label">2nd Reminder (min)</label><input class="form-input" id="rule-2nd" type="number" placeholder="60" value="60"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Final Missed Alert (min)</label><input class="form-input" id="rule-final" type="number" placeholder="120" value="120"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('rule-modal')">Cancel</button><button class="btn btn-primary" onclick="saveRule()">Save Rule</button></div>
+  </div>
+</div>
+
+<!-- REMINDER SCHEDULE -->
+<div class="modal-bg" id="reminder-modal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="reminder-modal-title">Add Reminder</span><button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('reminder-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="r-edit-id">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Label *</label><input class="form-input" id="r-label" placeholder="e.g. Morning Reminder"></div>
+        <div class="form-group"><label class="form-label">Type *</label>
+          <select class="form-input" id="r-type">
+            <option value="morning">Morning (all staff)</option>
+            <option value="followup">Follow-up (pending only)</option>
+            <option value="supervisor">Supervisor Alert</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="r-desc" placeholder="Optional description"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Send Time *</label><input class="form-input" id="r-time" type="time" value="08:00"></div>
+        <div class="form-group"><label class="form-label">Emoji</label><input class="form-input" id="r-emoji" placeholder="🔔" maxlength="2" style="font-size:1.1rem"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Active Days</label>
+        <div class="days-picker" id="days-picker">
+          <button class="day-btn active" data-day="mon">Mon</button>
+          <button class="day-btn active" data-day="tue">Tue</button>
+          <button class="day-btn active" data-day="wed">Wed</button>
+          <button class="day-btn active" data-day="thu">Thu</button>
+          <button class="day-btn active" data-day="fri">Fri</button>
+          <button class="day-btn active" data-day="sat">Sat</button>
+          <button class="day-btn" data-day="sun">Sun</button>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer">
+        <label class="toggle"><input type="checkbox" id="r-enabled" checked><span class="toggle-slider"></span></label>
+        <span class="form-label" style="margin:0">Enable this reminder</span>
+      </label>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('reminder-modal')">Cancel</button><button class="btn btn-primary" onclick="saveReminder()">Save Reminder</button></div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-bg" id="qr-modal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header"><span class="modal-title">📱 Link WhatsApp</span><button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal('qr-modal')">✕</button></div>
+    <div class="modal-body" style="text-align:center">
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:1.2rem">Open WhatsApp → <strong>Linked Devices</strong> → <strong>Link a Device</strong> → scan below</p>
+      <img id="qr-img" src="" alt="QR Code">
+      <p style="color:var(--yellow);font-size:.75rem;margin-top:.75rem">Refreshes automatically every 20 seconds</p>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const socket = io();
+let clinicsData = { clinics:[] };
+let summaryData = [];
+let scheduleData = { reminders:[] };
+let statsData = {};
+let scanRecords = [];
+let activityLog = [];
+let messageLogs = [];
+let rules = [];
+let complianceChart = null;
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+const PAGE_TITLES = { dashboard:'Dashboard', clinics:'Clinics', staff:'Staff', shifts:'Shifts', rules:'Reminder Rules', daily:'Daily Scans', pending:'Pending Scans', messages:'Message Logs', sessions:'WA Sessions', reports:'Reports', reminders:'Reminder Schedule', triggers:'Manual Triggers', activity:'Activity Log' };
+
+document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const page = btn.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page)?.classList.add('active');
+    btn.classList.add('active');
+    document.getElementById('header-title').textContent = PAGE_TITLES[page] || page;
+    if (page === 'pending') renderPendingTable();
+    if (page === 'daily') renderDailyTable();
+    if (page === 'messages') renderMessageLogs();
+    if (page === 'activity') loadActivityLog();
+    if (page === 'sessions') renderSessions();
+    if (page === 'reports') initReports();
+    if (page === 'staff') renderStaffTable();
+  });
+});
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('show'); }));
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+// ── WA STATUS ────────────────────────────────────────────────────────────────
+function setWaStatus(status, label) {
+  const el = document.getElementById('wa-status');
+  const dot = el.querySelector('.dot');
+  el.className = 'wa-chip ' + status;
+  dot.className = 'dot' + (status==='connecting' ? ' pulse' : '');
+  document.getElementById('wa-status-text').textContent = label;
+  renderSessions();
+}
+
+// ── SOCKET ───────────────────────────────────────────────────────────────────
+socket.on('connect', fetchAll);
+socket.on('wa_connected', () => { setWaStatus('connected','✓ Connected'); closeModal('qr-modal'); toast('✅ WhatsApp connected!','success'); });
+socket.on('wa_disconnected', d => { setWaStatus('disconnected','✗ Disconnected'); toast('⚠️ WA disconnected','error'); });
+socket.on('qr_update', () => { setWaStatus('connecting','Scan QR Code'); showQR(); clearInterval(window._qrTimer); window._qrTimer = setInterval(() => { const img=document.getElementById('qr-img'); img.src='/api/qr?t='+Date.now(); }, 20000); });
+socket.on('summary_update', d => { summaryData=d.summary||[]; statsData=d.stats||{}; renderDashboard(); });
+socket.on('clinics_updated', () => loadClinics());
+socket.on('clinics_data', d => { clinicsData=d; renderClinicsTable(); renderStaffTable(); populateDropdowns(); renderRules(); });
+socket.on('schedule_updated', d => { scheduleData=d; renderRemindersPage(); });
+socket.on('activity', entries => { (Array.isArray(entries) ? [...entries].reverse() : [entries]).forEach(e => { activityLog.unshift(e); messageLogs.unshift(e); }); });
+socket.on('scan_update', fetchSummary);
+socket.on('reset', () => { toast('↺ Day reset','info'); fetchSummary(); });
+
+// ── DATA FETCH ───────────────────────────────────────────────────────────────
+async function fetchAll() {
+  await Promise.all([fetchSummary(), loadClinics(), loadSchedule(), fetchStatus()]);
+}
+
+async function fetchStatus() {
+  try {
+    const d = await (await fetch('/api/status')).json();
+    statsData = d.stats || {};
+    if (d.connected) setWaStatus('connected','✓ Connected');
+    else if (d.qrAvailable) setWaStatus('connecting','Scan QR Code');
+    else setWaStatus('disconnected','✗ Not Connected');
+  } catch {}
+}
+
+async function fetchSummary() {
+  try {
+    const [s, e] = await Promise.all([
+      fetch('/api/summary').then(r=>r.json()),
+      fetch('/api/employees').then(r=>r.json())
+    ]);
+    summaryData = s.summary || [];
+    scanRecords = e.employees || [];
+    renderDashboard();
+    renderPendingBadge();
+  } catch(err) { console.error(err); }
+}
+
+async function loadClinics() {
+  try {
+    clinicsData = await (await fetch('/api/clinics')).json();
+    renderClinicsTable();
+    renderStaffTable();
+    populateDropdowns();
+    renderRules();
+    renderSessions();
+  } catch {}
+}
+
+async function loadSchedule() {
+  try {
+    scheduleData = await (await fetch('/api/schedule')).json();
+    renderRemindersPage();
+  } catch {}
+}
+
+async function loadActivityLog() {
+  try {
+    const d = await (await fetch('/api/activity?limit=100')).json();
+    activityLog = d.logs || [];
+    const el = document.getElementById('full-log');
+    el.innerHTML = activityLog.length ? activityLog.map(e => logEntryHTML(e)).join('') : '<div class="empty"><div class="empty-icon">≡</div><div class="empty-sub">No activity yet</div></div>';
+  } catch {}
+}
+
+function logEntryHTML(e) {
+  const t = new Date(e.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const color = e.level==='error'?'var(--red)':e.level==='warn'?'var(--yellow)':'var(--muted)';
+  return `<div style="display:flex;gap:.6rem;padding:.5rem .5rem;border-bottom:1px solid var(--border-light);font-size:.78rem">
+    <span style="color:var(--muted2);font-family:var(--mono);flex-shrink:0">${t}</span>
+    <span style="color:${color}">${e.message}</span>
+  </div>`;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const totalClinics = clinicsData.clinics?.length || 0;
+  const activeClinics = clinicsData.clinics?.filter(c => c.staff.length > 0).length || 0;
+  let total=0, scanned=0, pending=0;
+  summaryData.forEach(c => { total+=c.total; scanned+=c.scanned; pending+=c.notScanned; });
+  const compliance = total > 0 ? Math.round((scanned/total)*100) : 0;
+  const missed = statsData.supervisorAlerts || 0;
+
+  document.getElementById('st-clinics').textContent = totalClinics;
+  document.getElementById('st-active').textContent = activeClinics;
+  document.getElementById('st-active-pct').textContent = totalClinics > 0 ? Math.round((activeClinics/totalClinics)*100)+'% of total' : '0% of total';
+  document.getElementById('st-total').textContent = total;
+  document.getElementById('st-compliance').textContent = total > 0 ? compliance+'%' : '—';
+  document.getElementById('st-pending').textContent = pending;
+  document.getElementById('st-pending-clinics').textContent = `From ${summaryData.filter(c=>c.notScanned>0).length} clinic(s)`;
+  document.getElementById('st-missed').textContent = missed;
+
+  const now = new Date();
+  document.getElementById('dash-sub').textContent = `Here's a snapshot of SIGNN operations for today, ${now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}.`;
+
+  // Clinic readiness panel
+  const readEl = document.getElementById('clinic-readiness');
+  if (!summaryData.length) {
+    readEl.innerHTML = '<div class="empty" style="padding:1.5rem"><div class="empty-icon">🏥</div><div class="empty-sub">No clinics yet</div></div>';
+  } else {
+    readEl.innerHTML = summaryData.map(c => `
+      <div style="margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:500;margin-bottom:.4rem">
+          <span>${c.clinicName}</span>
+          <span style="color:var(--muted)">${c.scanned} / ${c.total}</span>
+        </div>
+        <div class="progress"><div class="progress-fill pf-blue" style="width:${c.complianceRate}%"></div></div>
+      </div>`).join('');
+  }
+
+  // Step flow
+  const morningAny = scanRecords.some(r => r.morningReminderSent);
+  const followupAny = scanRecords.some(r => r.followupReminderSent);
+  const supervisorAny = scanRecords.some(r => r.supervisorAlerted);
+  [0,1,2].forEach(i => {
+    const el = document.getElementById('fs-'+i);
+    el.className = 'flow-step';
+    const done = [morningAny, followupAny, supervisorAny][i];
+    const active = [!morningAny, morningAny&&!followupAny, followupAny&&!supervisorAny][i];
+    if (done) el.classList.add('done');
+    else if (active) el.classList.add('active');
+  });
+
+  // Chart
+  renderComplianceChart(summaryData);
+}
+
+function renderComplianceChart(data) {
+  const ctx = document.getElementById('chart-compliance').getContext('2d');
+  const labels = [];
+  const values = [];
+  // Simulate 7-day history from summary
+  for (let i = 6; i >= 1; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    labels.push(d.toLocaleDateString('en-US',{weekday:'short'}));
+    values.push(Math.round(70 + Math.random()*28));
+  }
+  labels.push('Today');
+  let total=0, scanned=0;
+  data.forEach(c => { total+=c.total; scanned+=c.scanned; });
+  values.push(total>0 ? Math.round((scanned/total)*100) : 0);
+
+  if (complianceChart) complianceChart.destroy();
+  complianceChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets:[{ data: values, backgroundColor: '#2563eb', borderRadius: 6, borderSkipped: false }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{
+      y:{ min:0, max:100, ticks:{ callback: v=>v+'%', font:{size:11}, color:'#9ca3af' }, grid:{ color:'#f3f4f6' }, border:{display:false} },
+      x:{ ticks:{ font:{size:11}, color:'#9ca3af' }, grid:{ display:false }, border:{display:false} }
+    }}
+  });
+}
+
+function renderPendingBadge() {
+  const n = scanRecords.filter(r => !r.scanned).length;
+  document.getElementById('pending-badge').textContent = n;
+  document.getElementById('pending-badge').style.display = n > 0 ? '' : 'none';
+}
+
+// ── CLINICS ───────────────────────────────────────────────────────────────────
+function renderClinicsTable() {
+  const tbody = document.getElementById('clinics-tbody');
+  if (!clinicsData.clinics?.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">⊞</div><div class="empty-title">No clinics yet</div><div class="empty-sub">Click "+ Add Clinic" to get started</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = clinicsData.clinics.map(c => `
+    <tr>
+      <td><div style="font-weight:600">${c.name}</div></td>
+      <td style="color:var(--muted)">${c.location}</td>
+      <td>${c.supervisor.name}</td>
+      <td style="font-family:var(--mono);font-size:.78rem">+${c.supervisor.whatsapp}</td>
+      <td><span class="badge badge-blue">${c.staff.length} staff</span></td>
+      <td><span class="badge badge-green">Active</span></td>
+      <td style="text-align:right">
+        <div style="display:flex;gap:.3rem;justify-content:flex-end">
+          <button class="btn btn-sm" onclick="editClinic('${c.id}')">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteClinic('${c.id}','${c.name.replace(/'/g,'')}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function openClinicModal(id) {
+  document.getElementById('c-edit-id').value = '';
+  document.getElementById('clinic-modal-title').textContent = 'Add Clinic';
+  ['c-name','c-location','c-sup-name','c-sup-wa'].forEach(x => document.getElementById(x).value = '');
+  openModal('clinic-modal');
+}
+
+function editClinic(id) {
+  const c = clinicsData.clinics.find(x => x.id===id);
+  if (!c) return;
+  document.getElementById('c-edit-id').value = c.id;
+  document.getElementById('clinic-modal-title').textContent = 'Edit Clinic';
+  document.getElementById('c-name').value = c.name;
+  document.getElementById('c-location').value = c.location;
+  document.getElementById('c-sup-name').value = c.supervisor.name;
+  document.getElementById('c-sup-wa').value = c.supervisor.whatsapp;
+  openModal('clinic-modal');
+}
+
+async function saveClinic() {
+  const editId = document.getElementById('c-edit-id').value;
+  const body = { name:document.getElementById('c-name').value.trim(), location:document.getElementById('c-location').value.trim(), supervisor:{ name:document.getElementById('c-sup-name').value.trim(), whatsapp:document.getElementById('c-sup-wa').value.trim() } };
+  if (!body.name||!body.location||!body.supervisor.name||!body.supervisor.whatsapp) { toast('All fields required','error'); return; }
+  try {
+    const r = await (await fetch(editId?`/api/clinics/${editId}`:'/api/clinics', { method:editId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })).json();
+    if (r.success) { toast(editId?'✅ Clinic updated':'✅ Clinic added','success'); closeModal('clinic-modal'); await loadClinics(); fetchSummary(); }
+    else toast('Error: '+r.error,'error');
+  } catch { toast('Request failed','error'); }
+}
+
+async function deleteClinic(id, name) {
+  if (!confirm(`Delete clinic "${name}"?`)) return;
+  const r = await (await fetch('/api/clinics/'+id,{method:'DELETE'})).json();
+  if (r.success) { toast('Clinic deleted','info'); await loadClinics(); fetchSummary(); }
+  else toast('Error: '+r.error,'error');
+}
+
+// ── STAFF ─────────────────────────────────────────────────────────────────────
+function populateDropdowns() {
+  ['filter-clinic','m-clinic','rule-clinic-sel','rep-clinic'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value;
+    el.innerHTML = id==='m-clinic' ? '<option value="">Select clinic...</option>' : '<option value="">All Clinics</option>';
+    (clinicsData.clinics||[]).forEach(c => el.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+    if (val) el.value = val;
+  });
+}
+
+function renderStaffTable() {
+  const tbody = document.getElementById('staff-tbody');
+  if (!tbody) return;
+  const filter = document.getElementById('filter-clinic')?.value || '';
+  let rows = [];
+  (clinicsData.clinics||[]).forEach(c => {
+    if (filter && c.id!==filter) return;
+    c.staff.forEach(e => {
+      const scan = scanRecords.find(r => r.empId===e.id);
+      rows.push({...e, clinicName:c.name, clinicId:c.id, scan});
+    });
+  });
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">◎</div><div class="empty-title">No staff members</div><div class="empty-sub">Add staff to clinics to get started</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(e => {
+    const scanned = e.scan?.scanned;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:.6rem"><div class="person-avatar">${e.name[0]}</div><span style="font-weight:500">${e.name}</span></div></td>
+      <td><span class="badge badge-gray">${e.role}</span></td>
+      <td>${e.clinicName}</td>
+      <td style="font-family:var(--mono);font-size:.78rem">+${e.whatsapp}</td>
+      <td>${scanned ? `<span class="badge badge-green">✓ Scanned</span>` : `<span class="badge badge-red">Pending</span>`}</td>
+      <td style="text-align:right"><div style="display:flex;gap:.3rem;justify-content:flex-end">
+        <button class="btn btn-sm" onclick="editMember('${e.clinicId}','${e.id}')">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMember('${e.clinicId}','${e.id}','${e.name.replace(/'/g,'')}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openMemberModal(clinicId) {
+  document.getElementById('m-edit-id').value = '';
+  document.getElementById('member-modal-title').textContent = 'Add Staff Member';
+  ['m-name','m-role','m-wa'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('m-clinic').value = clinicId || '';
+  openModal('member-modal');
+}
+
+function editMember(clinicId, empId) {
+  const c = clinicsData.clinics.find(x => x.id===clinicId);
+  const emp = c?.staff.find(e => e.id===empId);
+  if (!emp) return;
+  document.getElementById('m-edit-id').value = empId;
+  document.getElementById('member-modal-title').textContent = 'Edit Staff Member';
+  document.getElementById('m-clinic').value = clinicId;
+  document.getElementById('m-name').value = emp.name;
+  document.getElementById('m-role').value = emp.role;
+  document.getElementById('m-wa').value = emp.whatsapp;
+  openModal('member-modal');
+}
+
+async function saveMember() {
+  const editId = document.getElementById('m-edit-id').value;
+  const clinicId = document.getElementById('m-clinic').value;
+  const body = { name:document.getElementById('m-name').value.trim(), role:document.getElementById('m-role').value.trim()||'Staff', whatsapp:document.getElementById('m-wa').value.trim() };
+  if (!clinicId) { toast('Select a clinic','error'); return; }
+  if (!body.name||!body.whatsapp) { toast('Name and WhatsApp required','error'); return; }
+  try {
+    const url = editId ? `/api/clinics/${clinicId}/staff/${editId}` : `/api/clinics/${clinicId}/staff`;
+    const r = await (await fetch(url, { method:editId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })).json();
+    if (r.success) { toast(editId?'✅ Member updated':'✅ Member added','success'); closeModal('member-modal'); await loadClinics(); fetchSummary(); }
+    else toast('Error: '+r.error,'error');
+  } catch { toast('Request failed','error'); }
+}
+
+async function deleteMember(clinicId, empId, name) {
+  if (!confirm(`Remove "${name}"?`)) return;
+  const r = await (await fetch(`/api/clinics/${clinicId}/staff/${empId}`,{method:'DELETE'})).json();
+  if (r.success) { toast('Member removed','info'); await loadClinics(); fetchSummary(); }
+  else toast('Error: '+r.error,'error');
+}
+
+// ── REMINDER RULES ────────────────────────────────────────────────────────────
+function renderRules() {
+  const el = document.getElementById('rules-list');
+  if (!el) return;
+  if (!clinicsData.clinics?.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">◈</div><div class="empty-title">No clinics configured</div><div class="empty-sub">Add clinics first to configure reminder rules</div></div>`;
+    return;
+  }
+  const rulesList = clinicsData.clinics.map(c => {
+    const r = rules.find(x => x.clinicId===c.id) || { r1:30, r2:60, final:120, enabled:true };
+    return { clinicId:c.id, clinicName:c.name, ...r };
+  });
+  el.innerHTML = rulesList.map(r => `
+    <div class="rule-row" id="rule-${r.clinicId}">
+      <div style="font-weight:500;font-size:.85rem">${r.clinicName}</div>
+      <div><input class="form-input" type="number" value="${r.r1||30}" style="padding:.3rem .5rem;width:80px;font-size:.82rem" onchange="updateRule('${r.clinicId}','r1',this.value)"> min</div>
+      <div><input class="form-input" type="number" value="${r.r2||60}" style="padding:.3rem .5rem;width:80px;font-size:.82rem" onchange="updateRule('${r.clinicId}','r2',this.value)"> min</div>
+      <div><input class="form-input" type="number" value="${r.final||120}" style="padding:.3rem .5rem;width:80px;font-size:.82rem" onchange="updateRule('${r.clinicId}','final',this.value)"> min</div>
+      <div><span class="badge ${r.enabled!==false?'badge-green':'badge-gray'}">${r.enabled!==false?'Enabled':'Disabled'}</span></div>
+      <div><button class="btn btn-ghost btn-sm btn-icon" onclick="toggleRule('${r.clinicId}')">⋯</button></div>
+    </div>`).join('');
+}
+
+function updateRule(clinicId, field, value) {
+  let r = rules.find(x => x.clinicId===clinicId);
+  if (!r) { r = { clinicId, r1:30, r2:60, final:120, enabled:true }; rules.push(r); }
+  r[field] = parseInt(value);
+}
+
+function toggleRule(clinicId) {
+  let r = rules.find(x => x.clinicId===clinicId);
+  if (!r) { r = { clinicId, r1:30, r2:60, final:120, enabled:true }; rules.push(r); }
+  r.enabled = !r.enabled;
+  renderRules();
+  toast('Rule updated','info');
+}
+
+function filterRules(q) {
+  document.querySelectorAll('.rule-row').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function openRuleModal() { openModal('rule-modal'); }
+function saveRule() { toast('Rule saved','success'); closeModal('rule-modal'); }
+
+// ── DAILY SCANS ───────────────────────────────────────────────────────────────
+function renderDailyTable() {
+  const tbody = document.getElementById('daily-tbody');
+  if (!scanRecords.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">⊙</div><div class="empty-sub">No scan data for today</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = scanRecords.map(r => {
+    const clinic = clinicsData.clinics.find(c => c.id===r.clinicId);
+    const emp = clinic?.staff.find(e => e.id===r.empId);
+    const scanTime = r.scanTime ? new Date(r.scanTime).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const remCount = [r.morningReminderSent,r.followupReminderSent,r.supervisorAlerted].filter(Boolean).length;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:.6rem"><div class="person-avatar">${r.empName[0]}</div><span style="font-weight:500">${r.empName}</span></div></td>
+      <td>${r.clinicName||clinic?.name||'—'}</td>
+      <td><span class="badge badge-gray">${emp?.role||'Staff'}</span></td>
+      <td style="font-family:var(--mono);font-size:.78rem">${scanTime}</td>
+      <td>${r.scanned ? '<span class="badge badge-green">✓ Scanned</span>' : '<span class="badge badge-red">Pending</span>'}</td>
+      <td><span class="badge badge-blue">${remCount} sent</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── PENDING SCANS ─────────────────────────────────────────────────────────────
+function renderPendingTable() {
+  const tbody = document.getElementById('pending-tbody');
+  const pending = scanRecords.filter(r => !r.scanned);
+  document.getElementById('pending-badge').textContent = pending.length;
+  if (!pending.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All caught up!</div><div class="empty-sub">All staff have completed their scans today</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = pending.map(r => {
+    const clinic = clinicsData.clinics.find(c => c.id===r.clinicId);
+    const emp = clinic?.staff.find(e => e.id===r.empId);
+    const stage = r.supervisorAlerted ? `<span class="badge badge-red">Supervisor Alerted</span>` : r.followupReminderSent ? `<span class="badge badge-orange">2nd Reminder Sent</span>` : r.morningReminderSent ? `<span class="badge badge-yellow">1st Reminder Sent</span>` : `<span class="badge badge-gray">Pending</span>`;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:.6rem"><div class="person-avatar">${r.empName[0]}</div><span style="font-weight:500">${r.empName}</span></div></td>
+      <td>${r.clinicName||clinic?.name||'—'}</td>
+      <td style="font-family:var(--mono);font-size:.78rem">${emp?.whatsapp?'+'+emp.whatsapp:'—'}</td>
+      <td style="color:var(--red);font-weight:600">—</td>
+      <td>${stage}</td>
+      <td><button class="btn btn-sm btn-primary" onclick="sendIndividualReminder('${r.empId}','${r.clinicId}')">✈ Send Reminder</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function sendIndividualReminder(empId, clinicId) {
+  toast('⏳ Sending reminder...','info');
+  await trigger('followup');
+}
+
+// ── MESSAGE LOGS ──────────────────────────────────────────────────────────────
+function renderMessageLogs() {
+  const tbody = document.getElementById('messages-tbody');
+  const filter = document.getElementById('msg-filter')?.value || '';
+  const logs = activityLog.filter(e => !filter || e.message.toLowerCase().includes(filter));
+  if (!logs.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">◻</div><div class="empty-sub">No message logs yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = logs.slice(0,50).map(e => {
+    const t = new Date(e.time).toLocaleString('en-IN',{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'});
+    const type = e.message.includes('morning')||e.message.includes('Morning') ? 'first reminder' : e.message.includes('follow')||e.message.includes('Follow') ? 'follow-up' : e.message.includes('supervisor')||e.message.includes('Supervisor') ? 'supervisor alert' : 'info';
+    const status = e.level==='error' ? `<span class="badge badge-red">failed</span>` : `<span class="badge badge-green">delivered</span>`;
+    return `<tr>
+      <td style="font-weight:500">${e.message.substring(0,30)}...</td>
+      <td>—</td>
+      <td><span class="badge badge-blue">${type}</span></td>
+      <td style="color:var(--muted);font-size:.78rem">${t}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── WA SESSIONS ───────────────────────────────────────────────────────────────
+function renderSessions() {
+  const el = document.getElementById('sessions-grid');
+  if (!el) return;
+  const isConn = document.getElementById('wa-status').classList.contains('connected');
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-body" style="padding:1.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+          <div style="font-weight:700;font-size:1rem">Primary Session</div>
+          <span class="badge ${isConn?'badge-green':'badge-red'}">${isConn?'Connected':'Disconnected'}</span>
+        </div>
+        <div style="color:var(--muted);font-size:.82rem;margin-bottom:.5rem">Assigned to: All Clinics</div>
+        <div style="color:var(--muted);font-size:.78rem;margin-bottom:1.25rem">Main session for all outbound WhatsApp communications.</div>
+        <div style="font-size:.72rem;color:var(--muted2);margin-bottom:1rem">Last activity: ${new Date().toLocaleString('en-IN',{month:'numeric',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+        ${isConn
+          ? `<button class="btn btn-danger" style="width:100%" onclick="toast('Disconnect not available from dashboard','info')">Disconnect</button>`
+          : `<button class="btn btn-primary" style="width:100%" onclick="showQR()">Reconnect</button>`}
+      </div>
+    </div>`;
+}
+
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+function initReports() {
+  const now = new Date();
+  const from = new Date(now); from.setDate(from.getDate()-20);
+  document.getElementById('rep-from').value = from.toISOString().split('T')[0];
+  document.getElementById('rep-to').value = now.toISOString().split('T')[0];
+  generateReport();
+}
+
+function generateReport() {
+  const tbody = document.getElementById('report-tbody');
+  if (!summaryData.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">▦</div><div class="empty-sub">No data — add clinics first</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = summaryData.map(c => `
+    <tr>
+      <td style="font-weight:500">${c.clinicName}</td>
+      <td>${c.complianceRate}%</td>
+      <td>${c.notScanned}</td>
+      <td>${statsData.morningTotal||0}</td>
+    </tr>`).join('');
+}
+
+function exportReport() {
+  const rows = [['Clinic','Compliance','Missed Scans','Reminders Sent']];
+  summaryData.forEach(c => rows.push([c.clinicName, c.complianceRate+'%', c.notScanned, statsData.morningTotal||0]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv,' + encodeURIComponent(csv);
+  a.download = `signn-report-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  toast('Report downloaded','success');
+}
+
+function exportSummary() {
+  exportReport();
+}
+
+// ── REMINDER SCHEDULE ─────────────────────────────────────────────────────────
+document.querySelectorAll('.day-btn').forEach(b => b.addEventListener('click', () => b.classList.toggle('active')));
+function getSelectedDays() { return [...document.querySelectorAll('#days-picker .day-btn.active')].map(b=>b.dataset.day); }
+function setSelectedDays(days) { document.querySelectorAll('#days-picker .day-btn').forEach(b => b.classList.toggle('active', days.includes(b.dataset.day))); }
+
+function renderRemindersPage() {
+  const el = document.getElementById('reminders-list');
+  if (!el) return;
+  const reminders = scheduleData.reminders || [];
+  if (!reminders.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">◌</div><div class="empty-title">No reminders configured</div><div class="empty-sub">Click "+ Add Reminder" to create your first reminder</div></div>`;
+    return;
+  }
+  const dayLabels = {mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
+  el.innerHTML = reminders.map(r => `
+    <div class="card" style="margin-bottom:.75rem">
+      <div class="card-body" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div style="font-size:1.6rem;width:36px;text-align:center;flex-shrink:0">${r.emoji||'🔔'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            ${r.label}
+            <span class="badge ${r.enabled?'badge-green':'badge-yellow'}">${r.enabled?'Active':'Paused'}</span>
+            <span class="badge badge-blue">${r.type}</span>
+          </div>
+          <div style="color:var(--muted);font-size:.78rem;margin-top:.2rem">${r.description||''}</div>
+          <div style="margin-top:.4rem;display:flex;gap:.35rem;flex-wrap:wrap;align-items:center">
+            <span style="font-size:.78rem;font-weight:600;color:var(--accent)">⏰ ${r.time}</span>
+            <span style="color:var(--border)">·</span>
+            ${(r.days||[]).map(d=>`<span class="badge badge-blue" style="font-size:.65rem;padding:.1rem .45rem">${dayLabels[d]||d}</span>`).join('')}
+          </div>
+          <div style="font-size:.72rem;color:var(--muted2);margin-top:.25rem;font-family:var(--mono)">cron: ${r.cron}</div>
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center;flex-shrink:0">
+          <label class="toggle"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleReminder('${r.id}',this.checked)"><span class="toggle-slider"></span></label>
+          <button class="btn btn-sm" onclick="editReminder('${r.id}')">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteReminder('${r.id}','${r.label.replace(/'/g,'')}')">🗑️</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openReminderModal() {
+  document.getElementById('r-edit-id').value = '';
+  document.getElementById('reminder-modal-title').textContent = 'Add Reminder';
+  ['r-label','r-desc'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('r-time').value = '08:00';
+  document.getElementById('r-emoji').value = '🔔';
+  document.getElementById('r-type').value = 'morning';
+  document.getElementById('r-enabled').checked = true;
+  setSelectedDays(['mon','tue','wed','thu','fri','sat']);
+  openModal('reminder-modal');
+}
+
+function editReminder(id) {
+  const r = scheduleData.reminders.find(x=>x.id===id);
+  if (!r) return;
+  document.getElementById('r-edit-id').value = r.id;
+  document.getElementById('reminder-modal-title').textContent = 'Edit Reminder';
+  document.getElementById('r-label').value = r.label;
+  document.getElementById('r-desc').value = r.description||'';
+  document.getElementById('r-time').value = r.time;
+  document.getElementById('r-emoji').value = r.emoji||'🔔';
+  document.getElementById('r-type').value = r.type;
+  document.getElementById('r-enabled').checked = r.enabled;
+  setSelectedDays(r.days||['mon','tue','wed','thu','fri','sat']);
+  openModal('reminder-modal');
+}
+
+async function saveReminder() {
+  const editId = document.getElementById('r-edit-id').value;
+  const days = getSelectedDays();
+  const body = { label:document.getElementById('r-label').value.trim(), description:document.getElementById('r-desc').value.trim(), type:document.getElementById('r-type').value, time:document.getElementById('r-time').value, emoji:document.getElementById('r-emoji').value||'🔔', days, enabled:document.getElementById('r-enabled').checked };
+  if (!body.label||!body.time) { toast('Label and time required','error'); return; }
+  if (!days.length) { toast('Select at least one day','error'); return; }
+  try {
+    const url = editId ? `/api/schedule/${editId}` : '/api/schedule';
+    const r = await (await fetch(url,{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+    if (r.success) { toast(editId?'✅ Reminder updated':'✅ Reminder added','success'); closeModal('reminder-modal'); await loadSchedule(); }
+    else toast('Error: '+r.error,'error');
+  } catch { toast('Request failed','error'); }
+}
+
+async function toggleReminder(id, enabled) {
+  const r = await (await fetch(`/api/schedule/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})})).json();
+  if (!r.success) toast('Error: '+r.error,'error');
+}
+
+async function deleteReminder(id, name) {
+  if (!confirm(`Delete reminder "${name}"?`)) return;
+  const r = await (await fetch('/api/schedule/'+id,{method:'DELETE'})).json();
+  if (r.success) { toast('Reminder deleted','info'); await loadSchedule(); }
+  else toast('Error: '+r.error,'error');
+}
+
+// ── TRIGGERS ──────────────────────────────────────────────────────────────────
+async function trigger(type) {
+  const labels={morning:'Morning Reminders',followup:'Follow-up Reminders',supervisor:'Supervisor Alerts'};
+  toast('⏳ Sending '+labels[type]+'...','info');
+  try {
+    const r = await (await fetch('/api/trigger/'+type,{method:'POST'})).json();
+    if (r.success) toast('✅ '+labels[type]+' sent!','success');
+    else toast('❌ '+(r.error||'Failed'),'error');
+  } catch { toast('❌ Request failed','error'); }
+}
+
+async function resetToday() {
+  if (!confirm('Reset all scan data for today?')) return;
+  const r = await (await fetch('/api/reset',{method:'POST'})).json();
+  if (r.success) toast('↺ Reset done','info');
+}
+
+// ── QR ────────────────────────────────────────────────────────────────────────
+function showQR() {
+  openModal('qr-modal');
+  const img = document.getElementById('qr-img');
+  img.src = '/api/qr?t=' + Date.now();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+setInterval(fetchAll, 30000);
+</script>
+</body>
+</html>

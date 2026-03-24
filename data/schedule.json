@@ -1,0 +1,37 @@
+{
+  "reminders": [
+    {
+      "id": "reminder-1045",
+      "label": "10:55 Reminder",
+      "description": "Follow-up for pending staff",
+      "type": "followup",
+      "cron": "55 10 * * 1-6",
+      "time": "10:55",
+      "days": ["mon","tue","wed","thu","fri","sat"],
+      "enabled": true,
+      "emoji": "⏰"
+    },
+    {
+      "id": "reminder-1100",
+      "label": "11:00 Reminder",
+      "description": "Follow-up for pending staff",
+      "type": "followup",
+      "cron": "0 11 * * 1-6",
+      "time": "11:00",
+      "days": ["mon","tue","wed","thu","fri","sat"],
+      "enabled": true,
+      "emoji": "⏰"
+    },
+    {
+      "id": "reminder-1200",
+      "label": "12:00 Reminder",
+      "description": "Follow-up for pending staff",
+      "type": "followup",
+      "cron": "0 12 * * 1-6",
+      "time": "12:00",
+      "days": ["mon","tue","wed","thu","fri","sat"],
+      "enabled": true,
+      "emoji": "⏰"
+    }
+  ]
+}
